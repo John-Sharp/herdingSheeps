@@ -9,6 +9,13 @@ enum
     NUM_DECALS
 };
 
+enum
+{
+    MAP_TILE_A,
+    MAP_TILE_B,
+    NUM_MAP_DECALS
+};
+
 enum 
 {
     GS_LEFT = 1,
@@ -21,6 +28,18 @@ enum
 {
     COLL_GROUP_DOG,
 };
+
+enum
+{
+    MAP_W = 3,
+    MAP_H = 4,
+};
+
+typedef struct map
+{
+    actor a;
+    sprite s[MAP_W * MAP_H];
+} map;
 
 typedef struct dogActor
 {
@@ -37,7 +56,9 @@ typedef struct herdingSheepsEngine
     jcEng * collEng;
 
     decal decals[NUM_DECALS];
+    decal mapDecals[NUM_MAP_DECALS];
 
+    map map;
     dogActor dog;
 } herdingSheepsEngine;
 
@@ -61,6 +82,35 @@ void dogRenderHandler(actor *a)
 
 void dogLogicHandler(actor *a)
 {
+}
+
+void mapRenderHandler(actor *a)
+{
+    map * map = a->owner;
+
+    jint i;
+    for (i = 0; i < MAP_W * MAP_H; i++)
+    {
+        engineSpriteRender(a->eng, &map->s[i]);
+    }
+}
+
+void initMap(map * map, herdingSheepsEngine * eng)
+{
+    map->a.owner = map;
+    map->a.renderHandler = mapRenderHandler;
+    map->a.logicHandler = NULL;
+    engineActorReg(eng->engine, &map->a);
+
+    jint i;
+    for (i = 0; i < MAP_W * MAP_H; i++)
+    {
+        map->s[i].d = &eng->mapDecals[MAP_TILE_A];
+        map->s[i].rect.bl[0] = i * 32;
+        map->s[i].rect.bl[1] = 0;
+        map->s[i].rect.tr[0] = (i + 1) * 32;
+        map->s[i].rect.tr[1] = 32;
+    }
 }
 
 void initDog(dogActor * dog, herdingSheepsEngine * eng)
@@ -110,6 +160,38 @@ void herdingSheepsPreLogic(engine * e)
     jcEngDoStep(eng->collEng);
 }
 
+void loadMapDecals(herdingSheepsEngine * eng)
+{
+    juint mapTexture = engineLoadTexture(eng->engine, "assets/imgs/maps/map.png");
+    jintRect mapDimensions = engineGetTextureRect(eng->engine, mapTexture);
+
+    jint tileW = 32;
+    jint tileH = 32;
+
+    jint iRange = mapDimensions.tr[0] / tileW;
+    jint jRange = mapDimensions.tr[1] / tileH;
+
+    jint i;
+    jint j;
+    for (i = 0; i < iRange; i++)
+    {
+        for (j = 0; j < jRange; j++)
+        {
+            if (i + j == NUM_MAP_DECALS)
+                return;
+            jintRect tileSrcRect;
+            tileSrcRect.bl[0] = i * tileW;
+            tileSrcRect.bl[1] = j * tileH;
+
+            tileSrcRect.tr[0] = (i + 1) * tileW;
+            tileSrcRect.tr[1] = (j + 1) * tileH;
+
+            decalInit(&eng->mapDecals[i + j], eng->engine,
+                    mapTexture, tileSrcRect);
+        }
+    }
+}
+
 herdingSheepsEngine * initHerdingSheepsEngine(herdingSheepsEngine * eng)
 {
     eng->engine = createEngine(800, 600, eng);
@@ -117,10 +199,12 @@ herdingSheepsEngine * initHerdingSheepsEngine(herdingSheepsEngine * eng)
     juint dogTexture = engineLoadTexture(eng->engine, "assets/imgs/dog/E_still.png");
     decalInit(&eng->decals[DECAL_DOG], eng->engine,
             dogTexture, engineGetTextureRect(eng->engine, dogTexture));
+    loadMapDecals(eng);
 
     eng->collEng = createJcEng();
 
     initDog(&eng->dog, eng);
+    initMap(&eng->map, eng);
 
     enginePreLogicCallBackReg(eng->engine, herdingSheepsPreLogic);
 
