@@ -9,13 +9,6 @@ enum
     NUM_DECALS
 };
 
-enum
-{
-    MAP_TILE_A,
-    MAP_TILE_B,
-    NUM_MAP_DECALS
-};
-
 enum 
 {
     GS_LEFT = 1,
@@ -31,6 +24,11 @@ enum
 
 enum
 {
+    MAP_DECAL_SHEET_W = 3,
+    MAP_DECAL_SHEET_H =3,
+    MAP_TILE_W = 32,
+    MAP_TILE_H =32,
+    NUM_MAP_DECALS = 9,
     MAP_W = 3,
     MAP_H = 4,
 };
@@ -102,14 +100,22 @@ void initMap(map * map, herdingSheepsEngine * eng)
     map->a.logicHandler = NULL;
     engineActorReg(eng->engine, &map->a);
 
-    jint i;
-    for (i = 0; i < MAP_W * MAP_H; i++)
+    jint mapIndicies[] = {6,7,8,
+        3,4,5,
+        3,4,5,
+        0,1,2};
+
+    jint i, j;
+    for (j = 0; j < MAP_H; j++)
     {
-        map->s[i].d = &eng->mapDecals[MAP_TILE_A];
-        map->s[i].rect.bl[0] = i * 32;
-        map->s[i].rect.bl[1] = 0;
-        map->s[i].rect.tr[0] = (i + 1) * 32;
-        map->s[i].rect.tr[1] = 32;
+        for (i = 0; i < MAP_W; i++)
+        {
+            map->s[j*MAP_W+i].d = &eng->mapDecals[mapIndicies[i+(MAP_H-1-j)*MAP_W]];
+            map->s[j*MAP_W+i].rect.bl[0] = i * MAP_TILE_W;
+            map->s[j*MAP_W+i].rect.bl[1] = j * MAP_TILE_H;
+            map->s[j*MAP_W+i].rect.tr[0] = (i + 1) * MAP_TILE_W;
+            map->s[j*MAP_W+i].rect.tr[1] = (j + 1) * MAP_TILE_H;
+        }
     }
 }
 
@@ -163,30 +169,23 @@ void herdingSheepsPreLogic(engine * e)
 void loadMapDecals(herdingSheepsEngine * eng)
 {
     juint mapTexture = engineLoadTexture(eng->engine, "assets/imgs/maps/map.png");
-    jintRect mapDimensions = engineGetTextureRect(eng->engine, mapTexture);
-
-    jint tileW = 32;
-    jint tileH = 32;
-
-    jint iRange = mapDimensions.tr[0] / tileW;
-    jint jRange = mapDimensions.tr[1] / tileH;
 
     jint i;
     jint j;
-    for (i = 0; i < iRange; i++)
+    for (j = 0; j < MAP_DECAL_SHEET_H; j++)
     {
-        for (j = 0; j < jRange; j++)
+        for (i = 0; i < MAP_DECAL_SHEET_W; i++)
         {
             if (i + j == NUM_MAP_DECALS)
                 return;
             jintRect tileSrcRect;
-            tileSrcRect.bl[0] = i * tileW;
-            tileSrcRect.bl[1] = j * tileH;
+            tileSrcRect.bl[0] = i * MAP_TILE_W;
+            tileSrcRect.bl[1] = j * MAP_TILE_H;
 
-            tileSrcRect.tr[0] = (i + 1) * tileW;
-            tileSrcRect.tr[1] = (j + 1) * tileH;
+            tileSrcRect.tr[0] = (i + 1) * MAP_TILE_W;
+            tileSrcRect.tr[1] = (j + 1) * MAP_TILE_H;
 
-            decalInit(&eng->mapDecals[i + j], eng->engine,
+            decalInit(&eng->mapDecals[j * MAP_DECAL_SHEET_W + i], eng->engine,
                     mapTexture, tileSrcRect);
         }
     }
